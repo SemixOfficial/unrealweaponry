@@ -32,15 +32,10 @@ function SWEP:Initialize()
 
 	-- TODO: This is bad.
 	self.Primary.ClipSize		= self.ClipSize;
-	self.Primary.Ammo			= "smg1";
+	self.Primary.Ammo			= self.AmmoType;
 	self.Primary.DefaultClip	= self.ClipSize * 3;
 	self.Primary.Automatic		= true;
 	self.Secondary = nil;
-end
-
-function SWEP:Reload()
-	self:SetInaccuracy(0);
-	BaseClass.Reload(self);
 end
 
 function SWEP:GetCone()
@@ -56,7 +51,18 @@ function SWEP:GetCone()
 		baseInaccuracy = self.InaccuracyCrouch;
 	end
 
-	return math.rad(baseInaccuracy + self:GetInaccuracy() + inaccuracyMove);
+	local inaccuracy = math.rad(baseInaccuracy + self:GetInaccuracy() + inaccuracyMove);
+	if (nzPerks && owner:HasPerk("deadshot")) then
+		-- Compatibility for nZombies deadshot daquiri perk.
+		-- as it is stated on the official CoD wiki the
+		-- perk makes the player's crosshairs narrower by 35%
+		-- moves the aim-assist lock-on location from the torso to the head
+		-- reduces all weapon recoil (only in Black Ops) and removes the idle sway from sniper rifles.
+		-- so we are going to try to emulate that here.
+		inaccuracy = inaccuracy * 0.65;
+	end
+
+	return inaccuracy;
 end
 
 -- https://developer.valvesoftware.com/wiki/CShotManipulator
@@ -78,7 +84,6 @@ end
 
 function SWEP:UpdateInaccuracy()
 	local recoveryTime = self.RecoveryTimeStand;
-
 	local inaccuracyDecay = (self.InaccuracyMax / recoveryTime) * FrameTime();
 	self:SetInaccuracy(math.max(self:GetInaccuracy() - inaccuracyDecay, 0));
 end
@@ -91,7 +96,6 @@ function SWEP:IdleThink()
 	self:SendWeaponAnim(ACT_VM_IDLE);
 	self:SetNextIdleTime(CurTime() + self:SequenceDuration());
 end
-
 
 function SWEP:Think()
 	self:IdleThink();
@@ -108,9 +112,11 @@ function SWEP:GetBulletInfo()
 
 	info.owner		= owner;
 	info.origin		= owner:GetShootPos();
+	info.lastorigin	= info.origin;
 	info.velocity	= velocity;
 	info.mass		= self.ProjectileMass / GRAMS_PER_KILOGRAM;
 	info.caliber	= self.Caliber;
+	info.length		= self.ProjectileLength;
 	info.frontalarea	= frontalarea;
 	info.dragcoefficient= 0.04;
 	info.simulationtime	= Unreal.CurrentTime;
@@ -128,7 +134,7 @@ function SWEP:PrimaryAttack()
 	local seed = self:GetSpreadRandomSeed();
 	local owner = self:GetOwner();
 	local cycletime = (60 / self.CycleRate);
-	self:SetNextPrimaryFire(CurTime() - engine.TickInterval());
+	self:SetNextPrimaryFire(CurTime());
 	while (self:GetNextPrimaryFire() <= CurTime()) do
 		shots = shots + 1;
 		self:SetNextPrimaryFire(self:GetNextPrimaryFire() + cycletime);
@@ -136,10 +142,15 @@ function SWEP:PrimaryAttack()
 
 	owner:MuzzleFlash();
 	self:SendWeaponAnim(ACT_VM_PRIMARYATTACK);
+	self:SetNextIdleTime(CurTime() + self:SequenceDuration());
 	self:SetSpreadRandomSeed(math.fmod(seed + 1, 0x7FFFFFFF));
 	owner:SetAnimation(PLAYER_ATTACK1);
 	math.randomseed(seed);
 	shots = math.min(shots, self:Clip1());
+
+	if (self.ClipSize != -1) then
+		self:TakePrimaryAmmo(shots);
+	end
 
 	for i = 1, shots do
 		self:EmitSound(self.FireSound, 75, 100, 1, CHAN_WEAPON);

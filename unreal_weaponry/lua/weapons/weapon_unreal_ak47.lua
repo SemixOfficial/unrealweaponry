@@ -29,6 +29,8 @@ SWEP.FireSound	= "Weapon_AK47.Single";
 SWEP.CycleRate	= 600;
 -- How many bullets can fit in one magazine.
 SWEP.ClipSize	= 30;
+-- What ammo type does this weapon use?
+SWEP.AmmoType	= "smg1";
 -- Initial or "raw" damage of the weapon at zero range against unarmored opponents.
 SWEP.Damage		= 67;
 -- Caliber lol idk what to say about this, it's just a fucking caliber, you know the word used to describe diameter of bullet.
@@ -37,6 +39,8 @@ SWEP.Caliber	= 7.62;
 SWEP.MuzzleVelocity		= 710;
 -- Weight of the bullet (without shell casing obviously) in grams.
 SWEP.ProjectileMass		= 9;
+-- Length of the bullet in milimeters.
+SWEP.ProjectileLength	= 39;
 -- Base Inaccuracy of the weapon.
 SWEP.InaccuracyStand    = 0.47;
 -- Base Inaccuracy of the weapon when crouched.
